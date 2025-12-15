@@ -1,0 +1,7 @@
+{
+  "name": "PadWorld Immersive Deck - Section 2",
+  "description": "An immersive, cyberpunk-inspired investor presentation component for PadWorld Smart Courts.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
