@@ -1,24 +1,122 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion';
-import { ChevronDown, Zap, Globe, Cpu, Video, Loader2, Upload, ImageIcon } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { motion, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence } from 'framer-motion';
+import { ChevronDown, Zap, Globe } from 'lucide-react';
+
+// --- SCRAMBLE TEXT COMPONENT (DECRYPTION EFFECT) ---
+const CYCLES_PER_LETTER = 2;
+const SHUFFLE_TIME = 50;
+const CHARS = "!@#$%^&*():{};|,.<>/?~_=-+";
+
+const ScrambleText: React.FC<{ text: string; className?: string; delay?: number }> = ({ text, className = "", delay = 0 }) => {
+  const [displayText, setDisplayText] = useState(text);
+  const [isScrambling, setIsScrambling] = useState(true);
+
+  useEffect(() => {
+    let pos = 0;
+    let timeout: NodeJS.Timeout;
+
+    const scramble = () => {
+      const scrambled = text.split('').map((char, index) => {
+        if (index < pos) return char;
+        return CHARS[Math.floor(Math.random() * CHARS.length)];
+      }).join('');
+
+      setDisplayText(scrambled);
+
+      if (pos < text.length) {
+        if (Math.random() > 0.5) pos += 1 / CYCLES_PER_LETTER;
+        timeout = setTimeout(scramble, SHUFFLE_TIME);
+      } else {
+        setIsScrambling(false);
+      }
+    };
+
+    const startTimeout = setTimeout(() => {
+        scramble();
+    }, delay * 1000);
+
+    return () => {
+        clearTimeout(timeout);
+        clearTimeout(startTimeout);
+    };
+  }, [text, delay]);
+
+  return (
+    <span className={`${className} ${isScrambling ? 'opacity-80' : 'opacity-100'}`}>
+      {displayText}
+    </span>
+  );
+};
+
+// --- DYNAMIC SLOGAN ROTATOR ---
+const SLOGANS = [
+    "REDEFINING PHYSICS",
+    "DIGITIZING ATHLETICISM",
+    "THE INFINITE GAME",
+    "PRECISION ENGINEERED",
+    "FUTURE PROOF PROTOCOL"
+];
+
+const SloganRotator = () => {
+    const [index, setIndex] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setIndex((prev) => (prev + 1) % SLOGANS.length);
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="h-6 overflow-hidden relative flex justify-center items-center w-full mb-4">
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={index}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -20, opacity: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="absolute font-mono text-neon-blue text-xs md:text-sm tracking-[0.4em] uppercase font-bold text-center"
+                >
+                    // {SLOGANS[index]} //
+                </motion.div>
+            </AnimatePresence>
+        </div>
+    );
+};
+
+// --- FLOATING INVESTOR DATA HUD ---
+const InvestorHUD: React.FC<{ x: number; y: number; label: string; value: string; delay: number }> = ({ x, y, label, value, delay }) => (
+    <motion.div 
+        className="absolute z-0 hidden md:flex flex-col items-start p-3 bg-black/40 border border-white/10 backdrop-blur-sm rounded-sm"
+        style={{ top: `${y}%`, left: `${x}%` }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 0.6, scale: 1, y: [0, -10, 0] }}
+        transition={{ 
+            opacity: { delay, duration: 1 },
+            y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay }
+        }}
+    >
+        <div className="text-[9px] text-gray-500 font-mono uppercase tracking-widest mb-1">{label}</div>
+        <div className="text-neon-lime font-mono font-bold text-sm">{value}</div>
+        <div className="w-full h-[1px] bg-white/20 mt-2 relative">
+             <motion.div 
+                className="absolute top-0 left-0 h-full bg-neon-lime" 
+                animate={{ width: ['0%', '100%', '0%'] }}
+                transition={{ duration: 3, repeat: Infinity, delay }}
+             />
+        </div>
+    </motion.div>
+);
 
 export const Hero: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // State for media handling
-  // We prioritize: 
-  // 1. Manually uploaded file (via HUD)
-  // 2. Local public file (hero_bg.mp4 / hero_bg.jpg)
-  // 3. Fallback default Unsplash image
-  const [heroMediaUrl, setHeroMediaUrl] = useState<string | null>('/hero_bg.mp4'); 
-  const [mediaType, setMediaType] = useState<'video' | 'image'>('video');
+  // Media Routing Logic: Try local video first, fallback to image on error
+  const heroMediaUrl = '/hero_bg.mp4'; 
+  const mediaType = 'video';
   const [useFallback, setUseFallback] = useState(false);
-  
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationStatus, setGenerationStatus] = useState('');
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -44,84 +142,9 @@ export const Hero: React.FC = () => {
   const x = useSpring(mouseX, { stiffness: 50, damping: 20 });
   const y = useSpring(mouseY, { stiffness: 50, damping: 20 });
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-        const url = URL.createObjectURL(file);
-        setHeroMediaUrl(url);
-        setMediaType(file.type.startsWith('video') ? 'video' : 'image');
-        setUseFallback(false);
-    }
-  };
-
   const handleMediaError = () => {
-      // If the current media (e.g. hero_bg.mp4) fails to load
-      if (heroMediaUrl === '/hero_bg.mp4') {
-          // Try local image next
-          setHeroMediaUrl('/hero_bg.jpg');
-          setMediaType('image');
-      } else if (heroMediaUrl === '/hero_bg.jpg') {
-          // If local image fails, go to Unsplash fallback
-          setHeroMediaUrl(null); 
-          setUseFallback(true);
-      }
-  };
-
-  const generateBackgroundVideo = async () => {
-    // Check for API Key first (Required for Veo)
-    const hasKey = await window.aistudio.hasSelectedApiKey();
-    if (!hasKey) {
-        await window.aistudio.openSelectKey();
-        // Check again after dialog
-        if (!await window.aistudio.hasSelectedApiKey()) return;
-    }
-
-    setIsGenerating(true);
-    setGenerationStatus('INITIALIZING VEO...');
-
-    try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        
-        setGenerationStatus('GENERATING FRAMES...');
-        
-        let operation = await ai.models.generateVideos({
-            model: 'veo-3.1-fast-generate-preview',
-            prompt: 'Cinematic establishing shot of a futuristic cyberpunk padel tennis court, neon lime and blue laser lights, dark foggy atmosphere, 4k, hyper-realistic, slow camera pan',
-            config: {
-                numberOfVideos: 1,
-                resolution: '1080p',
-                aspectRatio: '16:9'
-            }
-        });
-
-        // Polling loop
-        while (!operation.done) {
-            setGenerationStatus('RENDERING VIDEO...');
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Check every 5s
-            operation = await ai.operations.getVideosOperation({operation: operation});
-        }
-
-        if (operation.response?.generatedVideos?.[0]?.video?.uri) {
-            setGenerationStatus('DOWNLOADING...');
-            const downloadLink = operation.response.generatedVideos[0].video.uri;
-            const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            setHeroMediaUrl(url);
-            setMediaType('video');
-            setUseFallback(false);
-        } else {
-            console.error("No video in response", operation);
-            setGenerationStatus('FAILED');
-        }
-
-    } catch (error) {
-        console.error("Video generation failed:", error);
-        setGenerationStatus('ERROR');
-    } finally {
-        setIsGenerating(false);
-        setGenerationStatus('');
-    }
+      console.warn("Hero video failed to load, switching to fallback image.");
+      setUseFallback(true);
   };
 
   return (
@@ -135,9 +158,8 @@ export const Hero: React.FC = () => {
         style={{ y: yBg, scale: 1.1, x: useTransform(x, [-0.5, 0.5], [-20, 20]), opacity: 0.6 }} 
         className="absolute inset-0 z-0"
       >
-         {/* Hybrid Video/Image Background */}
          <div className="absolute inset-0 bg-black">
-             {!useFallback && mediaType === 'video' && heroMediaUrl ? (
+             {!useFallback && mediaType === 'video' ? (
                  <video 
                     ref={videoRef}
                     src={heroMediaUrl}
@@ -148,15 +170,8 @@ export const Hero: React.FC = () => {
                     onError={handleMediaError}
                     className="absolute inset-0 w-full h-full object-cover grayscale brightness-75 contrast-125 mix-blend-luminosity animate-in fade-in duration-1000"
                  />
-             ) : !useFallback && mediaType === 'image' && heroMediaUrl ? (
-                <img 
-                    src={heroMediaUrl}
-                    onError={handleMediaError}
-                    alt="Hero Background"
-                    className="absolute inset-0 w-full h-full object-cover grayscale brightness-50 contrast-125 mix-blend-luminosity"
-                />
              ) : (
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1535131749006-b7f58c99034b?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat grayscale brightness-50 contrast-125 mix-blend-luminosity"></div>
+                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1535131749006-b7f58c99034b?q=80&w=200&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat grayscale brightness-50 contrast-125 mix-blend-luminosity"></div>
              )}
          </div>
          
@@ -174,180 +189,94 @@ export const Hero: React.FC = () => {
          />
       </div>
 
-      {/* 3. Floating Particles/Debris */}
-       <div className="absolute inset-0 z-0 pointer-events-none">
-          {[...Array(20)].map((_, i) => (
-             <motion.div
-               key={i}
-               className="absolute w-1 h-1 bg-neon-lime rounded-full"
-               initial={{ x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight, opacity: 0 }}
-               animate={{ 
-                 y: [null, Math.random() * -100], 
-                 opacity: [0, 1, 0] 
-               }}
-               transition={{ 
-                 duration: Math.random() * 5 + 3, 
-                 repeat: Infinity, 
-                 delay: Math.random() * 5 
-               }}
-             />
-          ))}
-       </div>
+      {/* 3. Background Data HUDs (Investor "Wow" Factor) */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+          <InvestorHUD x={10} y={20} label="Market CAGR" value="+14.2%" delay={0.5} />
+          <InvestorHUD x={80} y={15} label="Global TAM" value="$50.2B" delay={1.2} />
+          <InvestorHUD x={15} y={75} label="Token Velocity" value="HIGH" delay={2.0} />
+          <InvestorHUD x={85} y={65} label="Active Nodes" value="4,291" delay={2.8} />
+      </div>
 
       {/* 4. Main Typography & Content */}
       <motion.div 
         style={{ opacity: opacityText, scale: scaleText }}
         className="relative z-10 w-full max-w-[1400px] px-6 flex flex-col items-center text-center"
       >
-         {/* Background Watermark */}
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none z-0">
-            <h1 className="text-[15vw] font-black text-white opacity-[0.03] tracking-tighter blur-sm whitespace-nowrap">
-              PADWORLD
-            </h1>
-         </div>
-
          {/* HUD Top Marker */}
          <motion.div 
             initial={{ height: 0 }} 
             animate={{ height: 64 }} 
             transition={{ delay: 0.5 }}
-            className="w-[1px] bg-gradient-to-b from-transparent via-neon-lime to-transparent mb-8" 
+            className="w-[1px] bg-gradient-to-b from-transparent via-neon-lime to-transparent mb-6" 
          />
          
-         {/* Pre-title Label */}
-         <motion.div 
-           initial={{ opacity: 0, y: 20 }}
-           animate={{ opacity: 1, y: 0 }}
-           transition={{ delay: 0.8 }}
-           className="flex items-center gap-3 mb-6 relative z-10"
+         {/* Dynamic Slogan Rotator */}
+         <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
          >
-           <div className="flex items-center gap-1">
-             <span className="block w-1 h-1 bg-neon-blue rounded-full"></span>
-             <span className="block w-1 h-1 bg-neon-blue rounded-full"></span>
-             <span className="block w-1 h-1 bg-neon-blue rounded-full"></span>
-           </div>
-           <span className="font-mono text-[10px] text-neon-blue tracking-[0.4em] uppercase">System Online V2.4</span>
-           <div className="flex items-center gap-1">
-             <span className="block w-1 h-1 bg-neon-blue rounded-full"></span>
-             <span className="block w-1 h-1 bg-neon-blue rounded-full"></span>
-             <span className="block w-1 h-1 bg-neon-blue rounded-full"></span>
-           </div>
+            <SloganRotator />
          </motion.div>
 
-         {/* Hero Title */}
-         <div className="relative mb-8 z-10">
-            {/* Main Text */}
-            <h1 className="relative text-6xl md:text-9xl font-black text-white tracking-tighter leading-[0.85] z-10">
-              <span className="inline-block overflow-hidden pb-4">
-                 <motion.span 
-                   initial={{ y: "100%" }} 
-                   animate={{ y: 0 }} 
-                   transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                   className="block"
-                 >
-                   BEYOND
-                 </motion.span>
-              </span>
-              <br />
-              <span className="inline-block overflow-hidden pb-4">
-                 <motion.span 
-                    initial={{ y: "100%" }} 
-                    animate={{ y: 0 }} 
-                    transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                    className="block text-transparent bg-clip-text bg-gradient-to-b from-neon-lime to-transparent"
-                 >
-                   THE COURT
-                 </motion.span>
-              </span>
+         {/* KINETIC HERO TITLE (DECRYPTION EFFECT) */}
+         <div className="relative mb-6 z-10 perspective-container flex flex-col items-center">
+            <h1 className="font-display font-black text-6xl md:text-9xl text-white tracking-tighter leading-[0.85]">
+                <ScrambleText text="BEYOND" delay={0.2} />
+            </h1>
+            <h1 className="font-display font-black text-6xl md:text-9xl text-transparent bg-clip-text bg-gradient-to-b from-neon-lime to-green-900 tracking-tighter leading-[0.85] mt-2 filter drop-shadow-[0_0_20px_rgba(172,255,1,0.3)]">
+                <ScrambleText text="THE COURT" delay={1.5} className="glow-text" />
             </h1>
          </div>
 
-         {/* Subtitle / Description */}
+         {/* Subtitle */}
          <motion.p 
-           initial={{ opacity: 0 }}
-           animate={{ opacity: 1 }}
-           transition={{ delay: 1.2, duration: 1 }}
-           className="max-w-xl text-gray-400 font-light text-sm md:text-lg leading-relaxed tracking-wide mb-12 relative z-10"
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ delay: 2.5, duration: 1 }}
+           className="max-w-2xl text-gray-300 font-light text-sm md:text-lg leading-relaxed tracking-wide mb-10 relative z-10 border-l-2 border-neon-blue/50 pl-6 text-left md:text-center md:border-l-0 md:pl-0 font-sans"
          >
-           The first decentralized sports ecosystem powered by artificial intelligence. 
-           Connect, compete, and evolve in the <span className="text-white font-medium">ultimate digital arena</span>.
+           The first <span className="text-white font-medium">decentralized sports ecosystem</span> powered by artificial intelligence. 
+           We are digitizing the physical world to create the <span className="text-neon-lime font-medium">ultimate digital arena</span>.
          </motion.p>
 
          {/* CTA Buttons */}
          <motion.div 
            initial={{ opacity: 0, y: 20 }}
            animate={{ opacity: 1, y: 0 }}
-           transition={{ delay: 1.4 }}
+           transition={{ delay: 2.8 }}
            className="flex flex-col md:flex-row gap-6 items-center relative z-10"
          >
-            <button className="group relative px-8 py-4 bg-neon-lime text-black font-mono font-bold text-xs uppercase tracking-widest overflow-hidden">
+            <button className="group relative px-10 py-5 bg-neon-lime text-black font-mono font-bold text-xs uppercase tracking-widest overflow-hidden hover:shadow-[0_0_40px_#ACFF01] transition-shadow duration-300 clip-path-slant">
                <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                <span className="relative z-10 flex items-center gap-2">
-                 Initialize <Zap size={14} />
+                 INITIALIZE DECK <Zap size={14} fill="currentColor" />
                </span>
             </button>
-            <button className="group px-8 py-4 border border-white/20 text-white font-mono font-bold text-xs uppercase tracking-widest hover:border-white transition-colors">
+            <button className="group px-10 py-5 border border-white/20 text-white font-mono font-bold text-xs uppercase tracking-widest hover:border-white transition-colors hover:bg-white/5 clip-path-slant">
                <span className="flex items-center gap-2">
-                 Watch Keynote <Globe size={14} />
+                 WATCH KEYNOTE <Globe size={14} />
                </span>
             </button>
          </motion.div>
       </motion.div>
       
-      {/* 5. HUD Corners */}
-      <div className="absolute top-0 left-0 p-8 opacity-50 pointer-events-none z-20">
-         <div className="w-48 h-48 border-l-2 border-t-2 border-neon-blue/30 rounded-tl-3xl relative pointer-events-auto p-4 flex flex-col gap-2">
+      {/* 5. HUD Corners - Left Side Only for Aesthetic (Buttons Removed) */}
+      <div className="absolute top-32 left-0 p-8 opacity-50 pointer-events-none z-20">
+         <div className="w-48 h-48 border-l-2 border-t-2 border-neon-blue/30 rounded-tl-3xl relative p-4 flex flex-col gap-2">
             <div className="font-mono text-[9px] text-neon-blue mb-2">
-               COORD: {Math.random().toFixed(4)} <br/>
-               SYNC: AUTO
+               SECURE CONNECTION <br/>
+               ENCRYPTION: AES-256
             </div>
-            
-            <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
-                className="hidden" 
-                accept="image/*,video/*"
-            />
-
-            {/* GENERATE VIDEO BUTTON */}
-             <button 
-                onClick={generateBackgroundVideo}
-                disabled={isGenerating}
-                className="flex items-center gap-2 px-2 py-1.5 bg-white/10 hover:bg-neon-lime hover:text-black border border-white/20 rounded text-[9px] font-mono text-gray-300 transition-colors w-full justify-start"
-             >
-                {isGenerating ? <Loader2 size={10} className="animate-spin" /> : <Video size={10} />}
-                {isGenerating ? generationStatus : 'GENERATE AI VIDEO'}
-             </button>
-
-             {/* UPLOAD BUTTON */}
-             <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-2 py-1.5 bg-white/10 hover:bg-neon-blue hover:text-black border border-white/20 rounded text-[9px] font-mono text-gray-300 transition-colors w-full justify-start"
-             >
-                <Upload size={10} />
-                UPLOAD VISUAL
-             </button>
          </div>
       </div>
-      <div className="absolute top-0 right-0 p-8 opacity-50 pointer-events-none">
-         <div className="w-32 h-32 border-r-2 border-t-2 border-neon-blue/30 rounded-tr-3xl relative">
-             <Cpu size={16} className="absolute top-4 right-4 text-neon-blue/50" />
-         </div>
-      </div>
-      <div className="absolute bottom-0 left-0 p-8 opacity-50 pointer-events-none">
-         <div className="w-32 h-32 border-l-2 border-b-2 border-neon-blue/30 rounded-bl-3xl"></div>
-      </div>
-      <div className="absolute bottom-0 right-0 p-8 opacity-50 pointer-events-none">
-         <div className="w-32 h-32 border-r-2 border-b-2 border-neon-blue/30 rounded-br-3xl"></div>
-      </div>
-
+      
       {/* 6. Scroll Indicator */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 2, duration: 1 }}
-        className="absolute bottom-12 flex flex-col items-center gap-2 z-20"
+        transition={{ delay: 3.5, duration: 1 }}
+        className="absolute bottom-32 flex flex-col items-center gap-2 z-20"
       >
          <span className="font-mono text-[9px] text-gray-500 tracking-widest uppercase">Scroll to Enter</span>
          <motion.div 
@@ -359,7 +288,7 @@ export const Hero: React.FC = () => {
       </motion.div>
 
       {/* 7. Vignette Overlay */}
-      <div className="absolute inset-0 z-10 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_30%,black_100%)]"></div>
+      <div className="absolute inset-0 z-10 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_20%,black_100%)]"></div>
     </section>
   );
 };

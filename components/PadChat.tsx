@@ -223,6 +223,7 @@ export const PadChat: React.FC<PadChatProps> = ({ forcedFeatureIndex = null }) =
   const [matchState, setMatchState] = useState<'SCANNING' | 'FOUND'>('SCANNING');
   const [bookingStep, setBookingStep] = useState<'SELECT' | 'CONFIRMING' | 'CONFIRMED'>('SELECT');
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  const [bookingImage, setBookingImage] = useState('/app_court.jpg');
 
   // Chat State
   const [chatInput, setChatInput] = useState('');
@@ -625,7 +626,11 @@ export const PadChat: React.FC<PadChatProps> = ({ forcedFeatureIndex = null }) =
                         <div className="mb-6">
                             <div className="text-[10px] text-gray-500 font-mono mb-2 uppercase tracking-widest flex items-center gap-2"><MapPin size={10}/> Select Court</div>
                             <div className="relative h-32 rounded-lg overflow-hidden border border-white/20 group cursor-pointer ring-1 ring-transparent hover:ring-neon-lime transition-all">
-                                <img src="https://images.unsplash.com/photo-1554068865-2415f90d23bb?q=80&w=600&auto=format&fit=crop" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" />
+                                <img 
+                                    src={bookingImage} 
+                                    onError={() => setBookingImage('https://images.unsplash.com/photo-1554068865-2415f90d23bb?q=80&w=600&auto=format&fit=crop')}
+                                    className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" 
+                                />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                                 <div className="absolute bottom-0 left-0 right-0 p-3">
                                     <div className="flex justify-between items-end">
@@ -1178,7 +1183,7 @@ export const PadChat: React.FC<PadChatProps> = ({ forcedFeatureIndex = null }) =
              <span className="font-mono text-[10px] text-neon-lime tracking-widest uppercase">The Super App</span>
            </motion.div>
            
-           <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter text-white mb-6 leading-none">
+           <h2 className="font-display font-black text-5xl md:text-7xl uppercase tracking-tighter text-white mb-6 leading-[0.9]">
              One App.<br/>
              <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-blue to-white">Infinite Possibilities.</span>
            </h2>

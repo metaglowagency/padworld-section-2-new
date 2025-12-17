@@ -63,6 +63,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export const Analytics: React.FC = () => {
   const [data, setData] = useState(initialPerformanceData);
   const [isLive, setIsLive] = useState(true);
+  const [heatmapBg, setHeatmapBg] = useState('/analytics_heatmap.jpg');
 
   // Simulate Live Data Feed
   useEffect(() => {
@@ -96,7 +97,7 @@ export const Analytics: React.FC = () => {
              <Database size={16} className="text-neon-lime" />
              <span className="font-mono text-xs text-neon-lime tracking-widest uppercase">Post-Match Telemetry</span>
           </div>
-          <h2 className="font-sans font-black text-5xl uppercase tracking-tighter text-white">
+          <h2 className="font-display font-black text-5xl uppercase tracking-tighter text-white leading-[0.9]">
             Performance <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-blue to-white">Analytics</span>
           </h2>
         </div>
@@ -209,14 +210,21 @@ export const Analytics: React.FC = () => {
 
             {/* Heatmap / Zone Card */}
             <div className="h-48 bg-black/40 border border-white/10 backdrop-blur-md rounded-sm p-4 relative overflow-hidden flex items-center gap-4">
-                <div className="flex-1 relative h-full">
-                     <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1554068865-2415f90d23bb?q=80&w=400&auto=format&fit=crop')] bg-cover bg-center opacity-20 grayscale"></div>
+                <div className="flex-1 relative h-full rounded border border-white/5 overflow-hidden">
+                     {/* Local Image with Fallback */}
+                     <img 
+                        src={heatmapBg} 
+                        onError={() => setHeatmapBg('https://images.unsplash.com/photo-1554068865-2415f90d23bb?q=80&w=400&auto=format&fit=crop')}
+                        className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale"
+                        alt="Heatmap Court"
+                     />
+
                      {/* Heatmap Overlay */}
                      <div className="absolute top-[20%] right-[20%] w-16 h-16 bg-red-500/40 blur-xl rounded-full"></div>
                      <div className="absolute bottom-[30%] left-[30%] w-20 h-20 bg-orange-500/30 blur-xl rounded-full"></div>
                      
                      {/* Court Lines SVG */}
-                     <svg className="absolute inset-0 w-full h-full stroke-white/30 stroke-1 fill-none">
+                     <svg className="absolute inset-0 w-full h-full stroke-white/30 stroke-1 fill-none z-10">
                         <rect x="10%" y="10%" width="80%" height="80%" />
                         <line x1="50%" y1="10%" x2="50%" y2="90%" />
                         <line x1="10%" y1="50%" x2="90%" y2="50%" />

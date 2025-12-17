@@ -46,18 +46,13 @@ export const Ecosystem: React.FC = () => {
               </span>
            </div>
            
-           <h2 className="font-sans font-black text-5xl md:text-8xl uppercase tracking-tighter text-white mb-6 leading-none">
+           <h2 className="font-display font-black text-5xl md:text-8xl uppercase tracking-tighter text-white mb-6 leading-[0.9]">
              PadWorld <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-lime to-neon-blue">Universe</span>
            </h2>
          </motion.div>
        </div>
 
        {/* Solar System Container */}
-       {/* 
-          We use a very large fixed size container for the layout (1000px), 
-          then scale it down to fit the screen using CSS transform. 
-          This ensures perfect circular distribution without cramping.
-       */}
        <div className="relative w-[800px] h-[800px] md:w-[1000px] md:h-[1000px] flex items-center justify-center z-10 scale-[0.4] sm:scale-[0.5] md:scale-[0.7] lg:scale-[0.8] xl:scale-100 transition-transform duration-700">
           
           {/* Main Orbital Ring */}
@@ -126,26 +121,26 @@ export const Ecosystem: React.FC = () => {
                           whileInView={{ scale: 1, opacity: 1 }}
                           viewport={{ once: true }}
                           transition={{ delay: 0.2 + (index * 0.05) }}
-                          className="flex flex-col items-center group cursor-pointer"
+                          className="flex flex-col items-center group cursor-pointer w-40"
                       >
                           {/* Icon Circle */}
                           <div 
                               className={`
-                                relative w-24 h-24 rounded-full bg-black border flex items-center justify-center 
+                                relative w-16 h-16 rounded-full bg-black border flex items-center justify-center 
                                 shadow-lg transition-all duration-500 group-hover:scale-110 z-10
                                 ${colors.border} ${colors.glow}
                               `}
                           >
                              <div className="absolute inset-0 rounded-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                             <item.icon className={`${colors.text} transition-transform duration-500 group-hover:rotate-12`} size={32} />
+                             <item.icon className={`${colors.text} transition-transform duration-500 group-hover:rotate-12`} size={24} />
                           </div>
                           
-                          {/* Label Box */}
+                          {/* Label Box - TEXT IS HERE AND VISIBLE */}
                           <div className="mt-4 text-center">
-                              <div className="font-sans font-bold text-lg text-white uppercase tracking-wider group-hover:text-neon-lime transition-colors">
+                              <div className={`font-sans font-bold text-sm uppercase tracking-wider ${colors.text} mb-1 block`}>
                                 {item.label}
                               </div>
-                              <div className="text-[10px] text-gray-500 font-mono tracking-widest uppercase mt-1">
+                              <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest block">
                                 {item.description}
                               </div>
                           </div>
