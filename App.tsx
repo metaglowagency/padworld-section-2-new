@@ -226,6 +226,8 @@ const TOUR_STEPS = [
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.AUTH);
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = 13;
   
   // Tour State
   const [tourActive, setTourActive] = useState(false);
@@ -268,6 +270,51 @@ const App: React.FC = () => {
   const handleLoadingComplete = () => {
     setAppState(AppState.EXPERIENCE);
   };
+
+  // --- SCROLL OBSERVER FOR PAGE NUMBERS ---
+  useEffect(() => {
+    if (appState !== AppState.EXPERIENCE) return;
+
+    let observer: IntersectionObserver | null = null;
+
+    const initObserver = () => {
+        const sections = document.querySelectorAll('.app-section');
+        
+        // Retry logic: If sections aren't mounted yet, try again in next frame
+        if (sections.length === 0) {
+            requestAnimationFrame(initObserver);
+            return;
+        }
+
+        observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const index = Number(entry.target.getAttribute('data-index'));
+                    if (!isNaN(index)) {
+                        setCurrentPage(index);
+                    }
+                }
+            });
+        }, { 
+            // Center Strip Detection:
+            // This defines a narrow band in the middle of the screen (approx 10% height).
+            // A section is only considered "intersecting" when it crosses this center line.
+            // This prevents multiple sections from being active at once during scroll.
+            rootMargin: '-45% 0px -45% 0px', 
+            threshold: 0 
+        });
+
+        sections.forEach(s => observer?.observe(s));
+    };
+
+    // Small delay to ensure React has settled layout
+    const timeoutId = setTimeout(initObserver, 100);
+
+    return () => {
+        clearTimeout(timeoutId);
+        if (observer) observer.disconnect();
+    };
+  }, [appState]);
 
   // --- PODCAST LOGIC ---
   const stopPodcast = () => {
@@ -685,7 +732,7 @@ const App: React.FC = () => {
                   
                   {/* Page Counter */}
                   <div className="font-mono text-sm font-bold text-neon-lime">
-                     01 <span className="text-gray-600">/ 12</span>
+                     {String(currentPage).padStart(2, '0')} <span className="text-gray-600">/ {totalPages}</span>
                   </div>
                </div>
             </div>
@@ -821,80 +868,90 @@ const App: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* MAIN SECTIONS */}
-            <div ref={sectionRefs.hero} id="hero">
+            {/* MAIN SECTIONS WRAPPED FOR TRACKING */}
+            <div ref={sectionRefs.hero} id="hero" className="app-section" data-index="1">
                 <Hero />
             </div>
             
-            <SectionDivider 
-                localImage="section_1_court.jpg"
-                fallbackImage="https://images.unsplash.com/photo-1599474924187-334a405be655?q=80&w=1200" 
-                title="The Arena" 
-                subtitle="Smart Infrastructure"
-                slogan="INTELLIGENT SURFACE"
-            />
+            <div className="app-section" data-index="2">
+                <SectionDivider 
+                    localImage="section_1_court.jpg"
+                    fallbackImage="https://images.unsplash.com/photo-1599474924187-334a405be655?q=80&w=1200" 
+                    title="The Arena" 
+                    subtitle="Smart Infrastructure"
+                    slogan="INTELLIGENT SURFACE"
+                />
+            </div>
             
-            <div ref={sectionRefs.court} id="court">
+            <div ref={sectionRefs.court} id="court" className="app-section" data-index="3">
                 <SmartCourt demoMode={tourActive && tourStepIndex === 1} />
             </div>
 
-            <SectionDivider 
-                localImage="section_2_vision.jpg"
-                fallbackImage="https://images.unsplash.com/photo-1530915512336-f439ca9959dc?q=80&w=1200"
-                title="Optical Engine" 
-                subtitle="Computer Vision"
-                align="left"
-                slogan="ZERO LATENCY"
-            />
+            <div className="app-section" data-index="4">
+                <SectionDivider 
+                    localImage="section_2_vision.jpg"
+                    fallbackImage="https://images.unsplash.com/photo-1530915512336-f439ca9959dc?q=80&w=1200"
+                    title="Optical Engine" 
+                    subtitle="Computer Vision"
+                    align="left"
+                    slogan="ZERO LATENCY"
+                />
+            </div>
 
-            <div ref={sectionRefs.vision} id="vision">
+            <div ref={sectionRefs.vision} id="vision" className="app-section" data-index="5">
                 <AIVision />
             </div>
 
-            <SectionDivider 
-                localImage="section_3_referee.jpg"
-                fallbackImage="https://images.unsplash.com/photo-1554068865-2415f90d23bb?q=80&w=1200"
-                title="Fair Play" 
-                subtitle="Auto-Referee System"
-                align="right"
-                slogan="PRECISION"
-            />
+            <div className="app-section" data-index="6">
+                <SectionDivider 
+                    localImage="section_3_referee.jpg"
+                    fallbackImage="https://images.unsplash.com/photo-1554068865-2415f90d23bb?q=80&w=1200"
+                    title="Fair Play" 
+                    subtitle="Auto-Referee System"
+                    align="right"
+                    slogan="PRECISION"
+                />
+            </div>
 
-            <div ref={sectionRefs.referee} id="referee">
+            <div ref={sectionRefs.referee} id="referee" className="app-section" data-index="7">
                 <AutoReferee demoMode={tourActive && tourStepIndex === 3} />
             </div>
 
-            <SectionDivider 
-                 localImage="section_4_chat.jpg"
-                 fallbackImage="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1200"
-                 title="Super App"
-                 subtitle="The Ecosystem"
-                 slogan="CONNECTED"
-            />
+            <div className="app-section" data-index="8">
+                <SectionDivider 
+                    localImage="section_4_chat.jpg"
+                    fallbackImage="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1200"
+                    title="Super App"
+                    subtitle="The Ecosystem"
+                    slogan="CONNECTED"
+                />
+            </div>
 
-            <div ref={sectionRefs.chat} id="chat">
+            <div ref={sectionRefs.chat} id="chat" className="app-section" data-index="9">
                 <PadChat forcedFeatureIndex={getActiveAppFeatureIndex()} />
             </div>
 
-            <SectionDivider 
-                 localImage="section_5_analytics.jpg"
-                 fallbackImage="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200"
-                 title="Deep Data"
-                 subtitle="Analytics"
-                 align="left"
-                 slogan="INSIGHTS"
-            />
+            <div className="app-section" data-index="10">
+                <SectionDivider 
+                    localImage="section_5_analytics.jpg"
+                    fallbackImage="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200"
+                    title="Deep Data"
+                    subtitle="Analytics"
+                    align="left"
+                    slogan="INSIGHTS"
+                />
+            </div>
 
-            <div ref={sectionRefs.analytics} id="analytics">
+            <div ref={sectionRefs.analytics} id="analytics" className="app-section" data-index="11">
                 <Analytics />
             </div>
 
-            <div ref={sectionRefs.ecosystem} id="ecosystem">
+            <div ref={sectionRefs.ecosystem} id="ecosystem" className="app-section" data-index="12">
                 <Ecosystem />
             </div>
             
             {/* FOOTER */}
-            <div ref={sectionRefs.outro} className="relative h-[100vh] flex flex-col items-center justify-center bg-black overflow-hidden border-t border-white/5" id="outro">
+            <div ref={sectionRefs.outro} className="relative h-[100vh] flex flex-col items-center justify-center bg-black overflow-hidden border-t border-white/5 app-section" id="outro" data-index="13">
                 {/* Clean Background - Subtle radial glow only */}
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(20,20,20,1)_0%,rgba(0,0,0,1)_100%)]"></div>
                 <div className="absolute inset-0 bg-black/80"></div>
